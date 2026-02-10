@@ -62,6 +62,7 @@ export default {
   .version-item {
     display: flex;
     align-items: center;
+    justify-content: center;
     font-size: 12px;
     line-height: 24px;
     color: rgba(255, 255, 255, 0.7);
@@ -82,6 +83,9 @@ export default {
   }
 
   .version-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
     text-decoration: none;
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
