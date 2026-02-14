@@ -36,6 +36,9 @@
           <el-button :loading="loading" icon="el-icon-setting" type="primary" plain @click="openDirectoryConfig">目录快速配置</el-button>
         </el-form-item>
         <el-form-item>
+          <el-button :loading="loading" icon="el-icon-connection" type="success" plain @click="openThirdPartyConfig">平台对接向导</el-button>
+        </el-form-item>
+        <el-form-item>
           <el-tag size="small" type="info">目录类型：{{ directoryTypeText }}</el-tag>
         </el-form-item>
         <br>
@@ -311,6 +314,54 @@
         </div>
       </el-dialog>
 
+      <el-dialog
+        title="平台对接向导（飞书 / 企微 / 钉钉）"
+        :visible.sync="thirdPartyDialogVisible"
+        width="760px"
+        :close-on-click-modal="false"
+      >
+        <el-alert
+          title="建议流程：选择平台 -> 填写凭证 -> 先测试连接 -> 再保存配置。"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+        />
+        <el-tabs v-model="thirdPartyTab">
+          <el-tab-pane label="钉钉" name="dingtalk">
+            <el-form ref="dingtalkFormRef" size="small" :model="dingtalkForm" :rules="dingtalkRules" label-width="130px">
+              <el-form-item label="平台标识" prop="flag"><el-input v-model.trim="dingtalkForm.flag" placeholder="默认 dingtalk" /></el-form-item>
+              <el-form-item label="AppKey" prop="appKey"><el-input v-model.trim="dingtalkForm.appKey" /></el-form-item>
+              <el-form-item label="AppSecret" prop="appSecret"><el-input v-model.trim="dingtalkForm.appSecret" show-password placeholder="留空表示不修改" /></el-form-item>
+              <el-form-item label="AgentId" prop="agentId"><el-input v-model.trim="dingtalkForm.agentId" /></el-form-item>
+              <el-form-item label="启用同步"><el-switch v-model="dingtalkForm.enableSync" /></el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane label="企业微信" name="wecom">
+            <el-form ref="wecomFormRef" size="small" :model="wecomForm" :rules="wecomRules" label-width="130px">
+              <el-form-item label="平台标识" prop="flag"><el-input v-model.trim="wecomForm.flag" placeholder="默认 wecom" /></el-form-item>
+              <el-form-item label="CorpId" prop="corpId"><el-input v-model.trim="wecomForm.corpId" /></el-form-item>
+              <el-form-item label="CorpSecret" prop="corpSecret"><el-input v-model.trim="wecomForm.corpSecret" show-password placeholder="留空表示不修改" /></el-form-item>
+              <el-form-item label="AgentId" prop="weComAgentId"><el-input-number v-model="wecomForm.weComAgentId" :min="1" style="width: 100%" /></el-form-item>
+              <el-form-item label="启用同步"><el-switch v-model="wecomForm.enableSync" /></el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane label="飞书" name="feishu">
+            <el-form ref="feishuFormRef" size="small" :model="feishuForm" :rules="feishuRules" label-width="130px">
+              <el-form-item label="平台标识" prop="flag"><el-input v-model.trim="feishuForm.flag" placeholder="默认 feishu" /></el-form-item>
+              <el-form-item label="AppId" prop="appId"><el-input v-model.trim="feishuForm.appId" /></el-form-item>
+              <el-form-item label="AppSecret" prop="appSecret"><el-input v-model.trim="feishuForm.appSecret" show-password placeholder="留空表示不修改" /></el-form-item>
+              <el-form-item label="启用同步"><el-switch v-model="feishuForm.enableSync" /></el-form-item>
+            </el-form>
+          </el-tab-pane>
+        </el-tabs>
+        <div slot="footer" class="dialog-footer">
+          <el-button size="mini" @click="thirdPartyDialogVisible = false">取 消</el-button>
+          <el-button size="mini" type="warning" :loading="testingThirdParty" @click="handleTestThirdParty">测试连接</el-button>
+          <el-button size="mini" type="primary" :loading="savingThirdParty" @click="handleSaveThirdParty">保 存</el-button>
+        </div>
+      </el-dialog>
+
     </el-card>
   </div>
 </template>
@@ -323,7 +374,7 @@ import { getUsers, createUser, updateUserById, batchDeleteUserByIds, changeUserS
 import { resetPassword } from '@/api/system/user'
 import { getRoles } from '@/api/system/role'
 import { getGroupTree } from '@/api/personnel/group'
-import { getConfig, updateDirectoryConfig } from '@/api/system/base'
+import { getConfig, updateDirectoryConfig, testThirdPartyConfig, updateThirdPartyConfig } from '@/api/system/base'
 import { Message } from 'element-ui'
 
 export default {
@@ -492,6 +543,43 @@ export default {
           { required: true, message: '请输入默认邮箱后缀', trigger: 'blur' }
         ]
       },
+      thirdPartyDialogVisible: false,
+      thirdPartyTab: 'dingtalk',
+      testingThirdParty: false,
+      savingThirdParty: false,
+      dingtalkForm: {
+        platform: 'dingtalk',
+        flag: 'dingtalk',
+        appKey: '',
+        appSecret: '',
+        agentId: '',
+        enableSync: false
+      },
+      wecomForm: {
+        platform: 'wecom',
+        flag: 'wecom',
+        corpId: '',
+        corpSecret: '',
+        weComAgentId: 1,
+        enableSync: false
+      },
+      feishuForm: {
+        platform: 'feishu',
+        flag: 'feishu',
+        appId: '',
+        appSecret: '',
+        enableSync: false
+      },
+      dingtalkRules: {
+        appKey: [{ required: true, message: '请输入 AppKey', trigger: 'blur' }]
+      },
+      wecomRules: {
+        corpId: [{ required: true, message: '请输入 CorpId', trigger: 'blur' }],
+        weComAgentId: [{ required: true, message: '请输入 AgentId', trigger: 'change' }]
+      },
+      feishuRules: {
+        appId: [{ required: true, message: '请输入 AppId', trigger: 'blur' }]
+      },
 
       // 同步配置
       syncConfig: {
@@ -557,6 +645,80 @@ export default {
           this.getSyncConfig()
         } finally {
           this.savingDirectoryConfig = false
+        }
+      })
+    },
+    openThirdPartyConfig() {
+      this.dingtalkForm = {
+        platform: 'dingtalk',
+        flag: this.syncConfig.dingTalkFlag || 'dingtalk',
+        appKey: this.syncConfig.dingTalkAppKey || '',
+        appSecret: '',
+        agentId: this.syncConfig.dingTalkAgentId || '',
+        enableSync: !!this.syncConfig.dingTalkEnableSync
+      }
+      this.wecomForm = {
+        platform: 'wecom',
+        flag: this.syncConfig.weComFlag || 'wecom',
+        corpId: this.syncConfig.weComCorpId || '',
+        corpSecret: '',
+        weComAgentId: this.syncConfig.weComAgentId || 1,
+        enableSync: !!this.syncConfig.weComEnableSync
+      }
+      this.feishuForm = {
+        platform: 'feishu',
+        flag: this.syncConfig.feiShuFlag || 'feishu',
+        appId: this.syncConfig.feiShuAppId || '',
+        appSecret: '',
+        enableSync: !!this.syncConfig.feiShuEnableSync
+      }
+      this.thirdPartyTab = 'dingtalk'
+      this.thirdPartyDialogVisible = true
+    },
+    getCurrentThirdPartyForm() {
+      if (this.thirdPartyTab === 'wecom') {
+        return this.wecomForm
+      }
+      if (this.thirdPartyTab === 'feishu') {
+        return this.feishuForm
+      }
+      return this.dingtalkForm
+    },
+    getCurrentThirdPartyRefName() {
+      if (this.thirdPartyTab === 'wecom') {
+        return 'wecomFormRef'
+      }
+      if (this.thirdPartyTab === 'feishu') {
+        return 'feishuFormRef'
+      }
+      return 'dingtalkFormRef'
+    },
+    handleTestThirdParty() {
+      const refName = this.getCurrentThirdPartyRefName()
+      const form = this.getCurrentThirdPartyForm()
+      this.$refs[refName].validate(async valid => {
+        if (!valid) return
+        this.testingThirdParty = true
+        try {
+          await testThirdPartyConfig(form)
+          this.$message.success('连接测试成功')
+        } finally {
+          this.testingThirdParty = false
+        }
+      })
+    },
+    handleSaveThirdParty() {
+      const refName = this.getCurrentThirdPartyRefName()
+      const form = this.getCurrentThirdPartyForm()
+      this.$refs[refName].validate(async valid => {
+        if (!valid) return
+        this.savingThirdParty = true
+        try {
+          await updateThirdPartyConfig(form)
+          this.$message.success('平台配置已保存')
+          this.getSyncConfig()
+        } finally {
+          this.savingThirdParty = false
         }
       })
     },

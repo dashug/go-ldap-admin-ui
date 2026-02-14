@@ -37,6 +37,24 @@ export function updateDirectoryConfig(data) {
     data
   })
 }
+
+// 更新第三方平台配置
+export function updateThirdPartyConfig(data) {
+  return request({
+    url: '/api/base/thirdPartyConfig',
+    method: 'post',
+    data
+  })
+}
+
+// 测试第三方平台配置
+export function testThirdPartyConfig(data) {
+  return request({
+    url: '/api/base/thirdPartyConfig/test',
+    method: 'post',
+    data
+  })
+}
 // 获取版本信息
 export function getVersion() {
   return request({
