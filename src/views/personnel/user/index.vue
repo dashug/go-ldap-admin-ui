@@ -33,6 +33,9 @@
           <el-button :disabled="multipleSelection.length === 0" :loading="loading" icon="el-icon-upload2" type="success" @click="batchSync">批量同步</el-button>
         </el-form-item>
         <el-form-item>
+          <el-button :loading="loading" icon="el-icon-setting" type="primary" plain @click="openDirectoryConfig">目录快速配置</el-button>
+        </el-form-item>
+        <el-form-item>
           <el-tag size="small" type="info">目录类型：{{ directoryTypeText }}</el-tag>
         </el-form-item>
         <br>
@@ -257,6 +260,57 @@
         </div>
       </el-dialog>
 
+      <el-dialog
+        title="目录快速配置（OpenLDAP / AD）"
+        :visible.sync="directoryDialogVisible"
+        width="700px"
+        :close-on-click-modal="false"
+      >
+        <el-alert
+          title="新手建议：先选目录类型，再填地址和 DN；管理员密码可留空（表示不修改）。"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px;"
+        />
+        <el-form ref="directoryFormRef" size="small" :model="directoryForm" :rules="directoryRules" label-width="130px">
+          <el-form-item label="目录类型" prop="directoryType">
+            <el-select v-model="directoryForm.directoryType" style="width: 100%">
+              <el-option label="OpenLDAP" value="openldap" />
+              <el-option label="Windows AD" value="ad" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="LDAP 地址" prop="url">
+            <el-input v-model.trim="directoryForm.url" placeholder="ldap://10.0.0.10:389 或 ldaps://ad.example.com:636" />
+          </el-form-item>
+          <el-form-item label="Base DN" prop="baseDN">
+            <el-input v-model.trim="directoryForm.baseDN" placeholder="dc=example,dc=com" />
+          </el-form-item>
+          <el-form-item label="管理员 DN" prop="adminDN">
+            <el-input v-model.trim="directoryForm.adminDN" placeholder="cn=admin,dc=example,dc=com" />
+          </el-form-item>
+          <el-form-item label="管理员密码" prop="adminPass">
+            <el-input v-model.trim="directoryForm.adminPass" show-password placeholder="留空表示不修改当前密码" />
+          </el-form-item>
+          <el-form-item label="用户 OU DN" prop="userDN">
+            <el-input v-model.trim="directoryForm.userDN" placeholder="ou=people,dc=example,dc=com" />
+          </el-form-item>
+          <el-form-item label="默认初始密码" prop="userInitPassword">
+            <el-input v-model.trim="directoryForm.userInitPassword" show-password placeholder="新建用户默认密码" />
+          </el-form-item>
+          <el-form-item label="默认邮箱后缀" prop="defaultEmailSuffix">
+            <el-input v-model.trim="directoryForm.defaultEmailSuffix" placeholder="example.com" />
+          </el-form-item>
+          <el-form-item label="启用 LDAP 同步">
+            <el-switch v-model="directoryForm.ldapEnableSync" />
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button size="mini" @click="directoryDialogVisible = false">取 消</el-button>
+          <el-button size="mini" type="primary" :loading="savingDirectoryConfig" @click="submitDirectoryConfig">保 存</el-button>
+        </div>
+      </el-dialog>
+
     </el-card>
   </div>
 </template>
@@ -269,7 +323,7 @@ import { getUsers, createUser, updateUserById, batchDeleteUserByIds, changeUserS
 import { resetPassword } from '@/api/system/user'
 import { getRoles } from '@/api/system/role'
 import { getGroupTree } from '@/api/personnel/group'
-import { getConfig } from '@/api/system/base'
+import { getConfig, updateDirectoryConfig } from '@/api/system/base'
 import { Message } from 'element-ui'
 
 export default {
@@ -402,6 +456,42 @@ export default {
       resetPasswordDialogVisible: false,
       newPassword: '',
       resetUsername: '',
+      directoryDialogVisible: false,
+      savingDirectoryConfig: false,
+      directoryForm: {
+        directoryType: 'openldap',
+        url: '',
+        baseDN: '',
+        adminDN: '',
+        adminPass: '',
+        userDN: '',
+        userInitPassword: '',
+        defaultEmailSuffix: '',
+        ldapEnableSync: false
+      },
+      directoryRules: {
+        directoryType: [
+          { required: true, message: '请选择目录类型', trigger: 'change' }
+        ],
+        url: [
+          { required: true, message: '请输入 LDAP 地址', trigger: 'blur' }
+        ],
+        baseDN: [
+          { required: true, message: '请输入 Base DN', trigger: 'blur' }
+        ],
+        adminDN: [
+          { required: true, message: '请输入管理员 DN', trigger: 'blur' }
+        ],
+        userDN: [
+          { required: true, message: '请输入用户 OU DN', trigger: 'blur' }
+        ],
+        userInitPassword: [
+          { required: true, message: '请输入默认初始密码', trigger: 'blur' }
+        ],
+        defaultEmailSuffix: [
+          { required: true, message: '请输入默认邮箱后缀', trigger: 'blur' }
+        ]
+      },
 
       // 同步配置
       syncConfig: {
@@ -439,6 +529,36 @@ export default {
       } catch (error) {
         console.error('获取同步配置失败:', error)
       }
+    },
+    openDirectoryConfig() {
+      this.directoryForm = {
+        directoryType: (this.syncConfig.directoryType || 'openldap').toLowerCase(),
+        url: this.syncConfig.url || '',
+        baseDN: this.syncConfig.baseDN || '',
+        adminDN: this.syncConfig.adminDN || '',
+        adminPass: '',
+        userDN: this.syncConfig.userDN || '',
+        userInitPassword: this.syncConfig.userInitPassword || '',
+        defaultEmailSuffix: this.syncConfig.defaultEmailSuffix || '',
+        ldapEnableSync: !!this.syncConfig.ldapEnableSync
+      }
+      this.directoryDialogVisible = true
+    },
+    submitDirectoryConfig() {
+      this.$refs.directoryFormRef.validate(async valid => {
+        if (!valid) {
+          return
+        }
+        this.savingDirectoryConfig = true
+        try {
+          await updateDirectoryConfig(this.directoryForm)
+          this.$message.success('目录配置已保存')
+          this.directoryDialogVisible = false
+          this.getSyncConfig()
+        } finally {
+          this.savingDirectoryConfig = false
+        }
+      })
     },
     // 查询
     search() {

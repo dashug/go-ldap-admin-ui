@@ -28,6 +28,15 @@ export function getConfig() {
     method: 'get'
   })
 }
+
+// 更新目录服务配置
+export function updateDirectoryConfig(data) {
+  return request({
+    url: '/api/base/directoryConfig',
+    method: 'post',
+    data
+  })
+}
 // 获取版本信息
 export function getVersion() {
   return request({

@@ -30,6 +30,9 @@
           <el-button :disabled="multipleSelection.length === 0" :loading="loading" icon="el-icon-upload2" type="success" @click="batchSync">批量同步</el-button>
         </el-form-item>
         <el-form-item>
+          <el-button icon="el-icon-setting" type="primary" plain @click="$router.push('/personnel/user')">目录快速配置</el-button>
+        </el-form-item>
+        <el-form-item>
           <el-tag size="small" type="info">目录类型：{{ directoryTypeText }}</el-tag>
         </el-form-item>
         <br>
