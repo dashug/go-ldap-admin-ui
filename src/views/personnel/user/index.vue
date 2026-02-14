@@ -32,6 +32,9 @@
         <el-form-item>
           <el-button :disabled="multipleSelection.length === 0" :loading="loading" icon="el-icon-upload2" type="success" @click="batchSync">批量同步</el-button>
         </el-form-item>
+        <el-form-item>
+          <el-tag size="small" type="info">目录类型：{{ directoryTypeText }}</el-tag>
+        </el-form-item>
         <br>
         <el-form-item v-if="syncConfig.ldapEnableSync">
           <el-button :loading="loading" icon="el-icon-download" type="warning" @click="syncOpenLdapUsers">同步原ldap用户信息</el-button>
@@ -405,7 +408,8 @@ export default {
         ldapEnableSync: false,
         dingTalkEnableSync: false,
         feiShuEnableSync: false,
-        weComEnableSync: false
+        weComEnableSync: false,
+        directoryType: 'openldap'
       }
     }
   },
@@ -414,12 +418,24 @@ export default {
     this.getRoles()
     this.getSyncConfig()
   },
+  computed: {
+    directoryTypeText() {
+      const t = (this.syncConfig.directoryType || '').toLowerCase()
+      if (t === 'ad') {
+        return 'Windows AD'
+      }
+      return 'OpenLDAP'
+    }
+  },
   methods: {
     // 获取同步配置
     async getSyncConfig() {
       try {
         const { data } = await getConfig()
-        this.syncConfig = data
+        this.syncConfig = {
+          ...this.syncConfig,
+          ...data
+        }
       } catch (error) {
         console.error('获取同步配置失败:', error)
       }
