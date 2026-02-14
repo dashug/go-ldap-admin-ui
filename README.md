@@ -109,16 +109,16 @@ flowchart LR
 
 ### 一键全栈部署（推荐）
 
-请使用后端仓库提供的一键部署包（包含统一入口 + 后端 + OpenLDAP）：
+请使用后端仓库提供的一键部署包（包含统一入口 + 后端，支持 OpenLDAP / AD）：
 
 - 仓库：<https://github.com/dashug/go-ldap-admin>
-- 目录：`deploy/quick-start`
+- 目录：`deploy/full-stack`
 
 执行：
 
 ```bash
-cd deploy/quick-start
-./quick-start.sh
+cd deploy/full-stack
+./setup.sh
 ```
 
 访问：`http://localhost:8080`
