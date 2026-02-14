@@ -104,3 +104,40 @@ flowchart LR
 
 - 后端：<https://github.com/dashug/go-ldap-admin>
 - 前端：<https://github.com/dashug/go-ldap-admin-ui>
+
+## 部署说明
+
+### 本地开发运行
+
+```bash
+npm install
+npm run dev
+```
+
+默认开发地址通常为：
+
+- `http://localhost:9528`
+
+### 生产构建
+
+```bash
+npm install
+npm run build:prod
+```
+
+构建产物在 `dist/` 目录，可交给 Nginx/静态文件服务托管。
+
+### Docker 快速部署（前端）
+
+项目内提供了前端容器 `Dockerfile` 与 Nginx 配置 `default.conf`。  
+在仓库根目录执行：
+
+```bash
+docker build -t go-ldap-admin-ui:latest .
+docker run -d --name go-ldap-admin-ui -p 80:80 go-ldap-admin-ui:latest
+```
+
+说明：
+
+- 前端默认通过 `/api/` 反向代理到 `http://go-ldap-admin-server:8888`。
+- 若你的后端地址不同，请调整 `default.conf` 中 `proxy_pass` 后再构建镜像。
